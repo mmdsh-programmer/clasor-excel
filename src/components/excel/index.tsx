@@ -1,5 +1,6 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { SpreadsheetComponent, SheetsDirective } from "@syncfusion/ej2-react-spreadsheet";
+import { IframeAction, IframeMode } from "../../interface/enum";
 
 const ExcelComponent = () => {
   let spreadsheet: SpreadsheetComponent;
@@ -16,16 +17,54 @@ const ExcelComponent = () => {
     spreadsheet.numberFormat("$#,##0.00", "F2:F31");
   }
 
-  const handleSave = async () => {
-    const data = await spreadsheet.saveAsJson();
-    localStorage.setItem("data", JSON.stringify(data));
-    console.log(data);
+  const iframeActions = async (event: MessageEvent) => {
+    const { action, key, value } = event.data;
+
+    console.log("message from parent recieved:", action);
+
+    switch (action) {
+      case IframeMode.PREVIEW:
+      case IframeMode.TEMPORARY_PREVIEW:
+        spreadsheet.allowEditing = false;
+        spreadsheet.allowCellFormatting = false;
+        spreadsheet.showRibbon = false;
+        break;
+      case IframeMode.EDIT:
+        spreadsheet.allowEditing = true;
+        spreadsheet.allowCellFormatting = true;
+        spreadsheet.showRibbon = true;
+        break;
+      case IframeAction.SAVE:
+      case IframeAction.FREE_DRAFT:
+        event.source!.postMessage(
+          {
+            action,
+            key,
+            value: JSON.stringify(await spreadsheet.saveAsJson()),
+          },
+          // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+          // @ts-ignore
+          "*",
+        );
+        localStorage.setItem(key, JSON.stringify(await spreadsheet.saveAsJson()));
+        break;
+      case IframeAction.LOAD:
+        if (value) {
+          spreadsheet.open(JSON.parse(value));
+        }
+        break;
+      default:
+        break;
+    }
   };
 
-  const handleLoad = () => {
-    const data = localStorage.getItem("data");
-    spreadsheet.open(JSON.parse(data as string));
-  };
+  useEffect(() => {
+    window.addEventListener("message", iframeActions, false);
+
+    return () => {
+      window.removeEventListener("message", iframeActions);
+    };
+  }, []);
 
   return (
     <div className="control-pane">
@@ -40,12 +79,11 @@ const ExcelComponent = () => {
           }}
           // eslint-disable-next-line react/jsx-no-bind
           created={onCreated.bind(this)}
+          showRibbon={false}
         >
           <SheetsDirective />
         </SpreadsheetComponent>
       </div>
-      <button onClick={handleSave}>save</button>
-      <button onClick={handleLoad}>load</button>
     </div>
   );
 };
