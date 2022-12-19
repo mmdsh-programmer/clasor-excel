@@ -1,6 +1,7 @@
 import React, { useEffect } from "react";
 import { SpreadsheetComponent, SheetsDirective } from "@syncfusion/ej2-react-spreadsheet";
 import { IframeAction, IframeMode } from "../../interface/enum";
+import { isObject } from "@syncfusion/ej2-base";
 
 const ExcelComponent = () => {
   let spreadsheet: SpreadsheetComponent;
@@ -49,7 +50,7 @@ const ExcelComponent = () => {
         localStorage.setItem(key, JSON.stringify(await spreadsheet.saveAsJson()));
         break;
       case IframeAction.LOAD:
-        if (value) {
+        if (isObject(JSON.parse(value))) {
           spreadsheet.open(JSON.parse(value));
         }
         break;
@@ -79,7 +80,6 @@ const ExcelComponent = () => {
           }}
           // eslint-disable-next-line react/jsx-no-bind
           created={onCreated.bind(this)}
-          showRibbon={false}
         >
           <SheetsDirective />
         </SpreadsheetComponent>
